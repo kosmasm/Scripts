@@ -1,0 +1,7 @@
+#!/bin/bash
+JAVA_HOME=/opt/jre1.8.0_251
+
+export JAVA_HOME
+echo Java home = $JAVA_HOME
+echo $JAVA_HOME/bin/javaws $1
+$JAVA_HOME/bin/javaws "$1"

@@ -1,0 +1,1 @@
+pppd updetach noauth silent nodefaultroute nodeflate pty "/usr/bin/ssh root@94.130.110.234 /usr/sbin/pppd nodefaultroute nodetach notty noauth nodefaultroute +ipv6" nodefaultroute +ipv6 ipv6 ,

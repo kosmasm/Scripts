@@ -1,0 +1,19 @@
+#!/bin/bash
+[ -f ~/.kube/kottest ] && [ -f ~/.kube/kotstage ] && [ -f ~/.kube/kotprod ] && [ -f ~/.kube/kotproddr ] && [ -f ~/.kube/antyx ] || { echo Kotsovolos prod stage or test config files are missing. Exiting...; exit 1; }
+cur=`ls -al ~/.kube/|grep config |awk '{print $11}'|awk -F'/' '{print $5}'|sed s/kot//`
+[ "$cur" == "" ] && { echo No environment exists in .kube; cur="none"; } || echo Current environment is set to: $cur
+[ "$1" == "$cur" ] && { echo Current environment already set; exit 0; }
+[ "$1" == "" ] && exit 0;
+case $1 in
+	prod) echo Setting environment to prod; rm -f ~/.kube/config; ln -s ~/.kube/kotprod ~/.kube/config;;
+	proddr) echo Setting environment to proddr; rm -f ~/.kube/config; ln -s ~/.kube/kotproddr ~/.kube/config;;
+	stage) echo Setting environment to stage; rm -f ~/.kube/config; ln -s ~/.kube/kotstage ~/.kube/config;;
+	antyx) echo Setting environment to antyx; rm -f ~/.kube/config; ln -s ~/.kube/antyx ~/.kube/config;;
+	test) echo Setting environemtn to test; rm -f ~/.kube/config; ln -s ~/.kube/kottest ~/.kube/config;;
+	clean) echo Removing config file from .kube; rm -f ~/.kube/config;;
+	help) echo Script to change between the three environments of Kotsovolos; echo Ussage: kot stage\|prod\|test\|help; exit 0;;
+	*) echo Wrong environent given. Giving up...; exit 2;;
+esac
+
+cur=`ls -al ~/.kube/|grep config |awk '{print $11}'|awk -F'/' '{print $5}'|sed s/kot//`
+[ "$cur" == "" ] && echo Environment cleaned in .kube || echo New environment is set to: $cur

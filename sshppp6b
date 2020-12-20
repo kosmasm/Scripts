@@ -1,0 +1,3 @@
+
+# pppd updetach noauth silent nodeflate pty "/usr/bin/ssh root@$1 $2 $3 $4 $5 $6 $7 $8 $9 /usr/sbin/pppd nodetach notty noauth +ipv6" +ipv6 ipparam ipv6 fd90:1dd3:eac4:4001::1,fd90:1dd3:eac4:4001::3
+pppd updetach noauth silent nodeflate pty "/usr/bin/ssh root@client-marineplus /usr/sbin/pppd nodetach notty noauth ipv6 ," ipv6 ,
