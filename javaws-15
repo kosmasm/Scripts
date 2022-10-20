@@ -1,0 +1,10 @@
+#!/bin/bash
+JAVA_HOME=/opt/jdk1.5.0_22
+JDK_HOME=/opt/jdk1.5.0_22
+JAVAC=/opt/jdk1.5.0_22/bin/javac
+export JAVA_HOME
+export JAVA_JDK
+export JAVAC
+echo Java home = $JAVA_HOME
+echo $JAVA_HOME/bin/javaws $1
+$JAVA_HOME/bin/javaws "$1"

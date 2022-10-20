@@ -1,0 +1,2 @@
+/bin/python /usr/local/copy-fuse-master/copyfuse.py kosmas@kosmas.gr ismiin123 /mnt/copy
+encfs /mnt/copy /mnt/cloud
