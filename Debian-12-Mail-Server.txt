@@ -1,0 +1,175 @@
+Debian 11 Bullseye : Install
+
+
+Add User Accounts
+
+domain=xxxxxxx.xxx
+hostname=mail.$domain
+iprange=192.168.2.0/24
+### Edit and set netowrk IP address etc.
+    vi /etc/network/interfaces
+    # comment out
+    #iface enp1s0 inet dhcp
+
+    # add static settings
+    iface enp1s0 inet static
+    # IP address
+    address 192.168.200.50
+    # network address
+    network 192.168.200.0
+    # subnet mask
+    netmask 255.255.255.0
+    # broadcast address
+    broadcast 192.168.200.255
+    # default gateway
+    gateway 192.168.200.1
+    # name servers
+    dns-nameservers 192.168.200.1
+
+    systemctl restart ifup@enp1s0
+
+systemctl stop apparmor
+systemctl disable apparmor
+echo "deb http://deb.debian.org/debian/ bullseye-backports main contrib" >> vi /etc/apt/sources.list
+apt update
+apt -y upgrade
+apt -y install chrony sudo mc
+sed -i s/pool\ 2.debian.pool.ntp.org\ iburst/pool\ gr.pool.ntp.org\ iburst/ /etc/chrony/chrony.conf
+echo allow $iprange >> /etc/chrony/chrony.conf
+systemctl restart chrony
+apt -y install bind9 bind9utils
+apt -y install apache2
+sed -i s/^ServerTokens\ .*/ServerTokens\ Prod/ /etc/apache2/conf-enabled/security.conf
+sed -i s/^ServerName\ .*/ServerName\ $hostname/ /etc/apache2/apache2.conf
+sed -i s/^ServerAdmin\ .*/ServerAdmin\ webmaster@$domain/ /etc/apache2/sites-enabled/000-default.conf
+apt -y install php php-cgi libapache2-mod-php php-common php-pear php-mbstring php-fpm
+a2enconf php8.2-cgi
+sed -i s/^\;date\.timezone.*/date\.timezone\ =\ \"Europe\\/Athens\"/ /etc/php/8.2/apache2/php.ini
+a2enmod proxy_fcgi setenvif
+a2enmod cgid
+a2enconf php8.2-fpm
+systemctl restart php8.2-fpm apache2
+
+apt -y install postfix sasl2-bin
+cp /usr/share/postfix/main.cf.dist /etc/postfix/main.cf
+sed -i s/^#mail_owner\ =\ postfix/mail_owner\ =\ postfix/ /etc/postfix/main.cf
+sed -i s/^#myhostname\ =\ .*/myhostname\ =\ $hostname/ /etc/postfix/main.cf
+sed -i s/^#mydomain\ =\ .*/mydomain\ =\ $domain/ /etc/postfix/main.cf
+sed -i s/^#myorigin\ =\ \$mydomain/myorigin\ =\ \$mydomain/ /etc/postfix/main.cf
+sed -i s/^#inet_interfaces\ =\ all/inet_interfaces\ =\ all/ /etc/postfix/main.cf
+sed -i s/^#mydestination\ =\ \$myhostname,\ localhost\.\$mydomain,\ localhost,\ \$mydomain/mydestination\ =\ \$myhostname,\ localhost\.\$mydomain,\ localhost,\ \$mydomain/ /etc/postfix/main.cf
+sed -i s/^#local_recipient_maps\ =\ unix:passwd\.byname\ \$alias_maps/local_recipient_maps\ =\ unix:passwd\.byname\ \$alias_maps/ /etc/postfix/main.cf
+sed -i s/^#mynetworks_style\ =\ subnet/mynetworks_style\ =\ subnet/ /etc/postfix/main.cf
+### Edit below and set the correct IP address of the lan
+sed -i s/^mynetworks\ =\ 127\.0\.0\.0\\/8/mynetworks\ =\ 127\.0\.0\.0\\/8\,\ 192\.168\.0\.0\\/16/ /etc/postfix/main.cf
+sed -i s/^#alias_maps\ =\ hash:\\/etc\\/aliases/alias_maps\ =\ hash:\\/etc\\/aliases/ /etc/postfix/main.cf
+sed -i s/^#alias_database\ =\ hash:\\/etc\\/aliases/alias_database\ =\ hash:\\/etc\\/aliases/ /etc/postfix/main.cf
+sed -i s/^#home_mailbox\ =\ Maildir\\//home_mailbox\ =\ Maildir\\// /etc/postfix/main.cf
+sed -i s/^smtpd_banner\ =\ \$myhostname\ ESMTP\ \$mail_name\ \(Debian\\/GNU\)/smtpd_banner\ =\ \$myhostname\ ESMTP/ /etc/postfix/main.cf
+sed -i s/^sendmail_path\ =.*/sendmail_path\ =\ \\/usr\\/sbin\\/postfix/ /etc/postfix/main.cf
+sed -i s/^newaliases_path\ =.*/newaliases_path\ =\ \\/usr\\/bin\\/newaliases/ /etc/postfix/main.cf
+sed -i s/^mailq_path\ =.*/mailq_path\ =\ \\/usr\\/bin\\/mailq/ /etc/postfix/main.cf
+sed -i s/^setgid_group\ =.*/setgid_group\ =\ postdrop/ /etc/postfix/main.cf
+sed -i s/^html_directory\ =.*/#html_directory\ =/ /etc/postfix/main.cf
+sed -i s/^manpage_directory\ =.*/#manpage_directory\ =/ /etc/postfix/main.cf
+sed -i s/^sample_directory\ =.*/#sample_directory\ =/ /etc/postfix/main.cf
+sed -i s/^readme_directory\ =.*/#readme_directory\ =/ /etc/postfix/main.cf
+
+echo "# disable SMTP VRFY command" >> /etc/postfix/main.cf
+echo "disable_vrfy_command = yes" >> /etc/postfix/main.cf
+echo "# require HELO command to sender hosts" >> /etc/postfix/main.cf
+echo "smtpd_helo_required = yes" >> /etc/postfix/main.cf
+echo "# limit an email size" >> /etc/postfix/main.cf
+echo "# example below means 10M bytes limit" >> /etc/postfix/main.cf
+echo "message_size_limit = 10240000" >> /etc/postfix/main.cf
+echo "# SMTP-Auth settings" >> /etc/postfix/main.cf
+echo "smtpd_sasl_type = dovecot" >> /etc/postfix/main.cf
+echo "smtpd_sasl_path = private/auth" >> /etc/postfix/main.cf
+echo "smtpd_sasl_auth_enable = yes" >> /etc/postfix/main.cf
+echo "smtpd_sasl_security_options = noanonymous" >> /etc/postfix/main.cf
+echo "smtpd_sasl_local_domain = $myhostname" >> /etc/postfix/main.cf
+echo "smtpd_recipient_restrictions = permit_mynetworks, permit_auth_destination, permit_sasl_authenticated, reject" >> /etc/postfix/main.cf
+
+echo "# reject unknown clients that forward lookup and reverse lookup of their hostnames on DNS do not match" >> /etc/postfix/main.cf
+echo "smtpd_client_restrictions = permit_mynetworks, reject_unknown_client_hostname, permit" >> /etc/postfix/main.cf
+echo "# rejects senders that domain name set in FROM are not registered in DNS or" >> /etc/postfix/main.cf
+echo "# not registered with FQDN" >> /etc/postfix/main.cf
+echo "smtpd_sender_restrictions = permit_mynetworks, reject_unknown_sender_domain, reject_non_fqdn_sender" >> /etc/postfix/main.cf
+echo "# reject hosts that domain name set in FROM are not registered in DNS or" >> /etc/postfix/main.cf
+echo "# not registered with FQDN when your SMTP server receives HELO command" >> /etc/postfix/main.cf
+echo "smtpd_helo_restrictions = permit_mynetworks, reject_unknown_hostname, reject_non_fqdn_hostname, reject_invalid_hostname, permit" >> /etc/postfix/main.cf
+newaliases
+
+systemctl restart postfix
+
+apt -y install dovecot-core dovecot-pop3d dovecot-imapd
+sed -i s/^#listen\ =\ \*,\ ::/listen\ =\ \*,\ ::/ /etc/dovecot/dovecot.conf
+sed -i s/^#disable_plaintext_auth\ =.*/disable_plaintext_auth\ =\ no/ /etc/dovecot/conf.d/10-auth.conf
+sed -i s/^auth_mechanisms\ =\ plain/auth_mechanisms\ =\ plain\ login/ /etc/dovecot/conf.d/10-auth.conf
+sed -i s/^mail_location\ =\.\*/mail_location\ =\ maildir:\~\\/Maildir/ /etc/dovecot/conf.d/10-mail.conf
+sed -i s/#unix_listener\ \\/var\\/spool\\/postfix\\/private\\/auth\ \{/unix_listener\ \\/var\\/spool\\/postfix\\/private\\/auth\ \{/ /etc/dovecot/conf.d/10-master.conf
+sed -i s/#\ \ mode\ =\ 0666/mode\ =\ 0666\\nuser\ =\ postfix\\ngroup\ =\ postfix\\n\ / /etc/dovecot/conf.d/10-master.conf
+### Edit /etc/dovecot/conf.d/10-master.conf and check after unix listener (around line 118) to close the {
+systemctl restart dovecot
+apt -y install clamav-daemon amavisd-new
+
+### Edit below and uncomment the antivirus check
+    vi /etc/amavis/conf.d/15-content_filter_mode
+    # uncomment to enable virus scanning
+        @bypass_virus_checks_maps = (
+        \%bypass_virus_checks, \@bypass_virus_checks_acl, \$bypass_virus_checks_re);
+echo $domain > /etc/mailname
+echo content_filter=smtp-amavis:[127.0.0.1]:10024 >> /etc/postfix/main.cf
+
+echo "smtp-amavis unix -    -    n    -    2 smtp" >> /etc/postfix/master.cf
+echo "    -o smtp_data_done_timeout=1200" >> /etc/postfix/master.cf
+echo "    -o smtp_send_xforward_command=yes" >> /etc/postfix/master.cf
+echo "    -o disable_dns_lookups=yes" >> /etc/postfix/master.cf
+echo "127.0.0.1:10025 inet n    -    n    -    - smtpd" >> /etc/postfix/master.cf
+echo "    -o content_filter=" >> /etc/postfix/master.cf
+echo "    -o local_recipient_maps=" >> /etc/postfix/master.cf
+echo "    -o relay_recipient_maps=" >> /etc/postfix/master.cf
+echo "    -o smtpd_restriction_classes=" >> /etc/postfix/master.cf
+echo "    -o smtpd_client_restrictions=" >> /etc/postfix/master.cf
+echo "    -o smtpd_helo_restrictions=" >> /etc/postfix/master.cf
+echo "    -o smtpd_sender_restrictions=" >> /etc/postfix/master.cf
+echo "    -o smtpd_recipient_restrictions=permit_mynetworks,reject" >> /etc/postfix/master.cf
+echo "    -o mynetworks=127.0.0.0/8" >> /etc/postfix/master.cf
+echo "    -o strict_rfc821_envelopes=yes" >> /etc/postfix/master.cf
+echo "    -o smtpd_error_sleep_time=0" >> /etc/postfix/master.cf
+echo "    -o smtpd_soft_error_limit=1001" >> /etc/postfix/master.cf
+echo "    -o smtpd_hard_error_limit=1000" >> /etc/postfix/master.cf
+systemctl restart clamav-daemon amavis postfix
+
+apt -y install opendkim opendkim-tools
+sudo -u opendkim opendkim-genkey -D /etc/dkimkeys -d $domain -s 2023
+sed -i s/^#Domain.*/Domain\ $domain/ /etc/opendkim.conf
+sed -i s/^#Selector.*/Selector\ 2023/ /etc/opendkim.conf
+sed -i s/^#KeyFile.*/KeyFile\ \\/etc\\/dkimkeys\\/2023.private/ /etc/opendkim.conf
+sed -i s/^Socket.*/Socket\ \ \ inet:8891@localhost/ /etc/opendkim.conf
+echo "smtpd_milters = inet:localhost:8891" >> /etc/postfix/main.cf
+echo "non_smtpd_milters = $smtpd_milters" >> /etc/postfix/main.cf
+systemctl restart opendkim postfix
+
+#### PUT THE /etc/dkimkeys/2023.txt in DNS Server
+
+apt -y install opendmarc
+systemctl enable opendmarc
+sed -i s/AuthservID\ name/AuthservID\ OpenDMARC/ /etc/opendmarc.conf
+sed -i s/^TrustedAuthservIDs.*/TrustedAuthservIDs\ $hostname/ /etc/opendmarc.conf
+echo "IgnoreAuthenticatedClients true" >> /etc/opendmarc.conf
+echo "RequiredHeaders    true" >> /etc/opendmarc.conf
+echo "SPFSelfValidate true" >> /etc/opendmarc.conf
+sed -i s/Socket\ local:\\/run\\/opendmarc\\/opendmarc\.sock/Socket\ local:\\/var\\/spool\\/postfix\\/opendmarc\\/opendmarc\.sock/ /etc/opendmarc.conf
+mkdir -p /var/spool/postfix/opendmarc
+chown opendmarc:opendmarc /var/spool/postfix/opendmarc -R
+chmod 750 /var/spool/postfix/opendmarc/ -R
+adduser postfix opendmarc
+systemctl restart opendmarc
+sed -i s/^smtpd_milters\ =\ inet:localhost:8891/smtpd_milters\ =\ inet:localhost:8891,local:opendmarc\\/opendmarc.sock/ /etc/postfix/main.cf
+systemctl restart postfix
+
+
+apt install vim sudo bind9 bind9utils wget curl links mariadb-server phpmyadmin mailutils opendkim opendkim-tools opendmarc roundcube roundcube-mysql fail2ban certbot logwatch rkhunter chkrootkit geoip-database ipcalc-ng cabextract dos2unix dosfstools ethtool fetchmail fping logrotate ncompress nmap nfs-client p7zip re2c spamassassin tcpdump unace unixodbc unzip wireguard-tools xorriso genisoimage python3-certbot-dns-dnsimple python3-certbot-dns-rfc2136 python3-certbot-apache pflogsumm bc telnet logwatch logrotate iptables
+
+systemctl enable postfix amavis clamav-daemon clamav-freshclam dovecot fail2ban apache2 mariadb opendkim opendmarc php8.2-fpm saslauthd ssh certbot
