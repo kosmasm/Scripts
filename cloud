@@ -1,0 +1,1 @@
+ssh -4 -l root -p 23523 cloud.kosmas.gr

@@ -1,0 +1,49 @@
+#!/usr/bin/perl -w
+#
+#  netgviz network graphing toolkit - cisco config converter
+#
+#  Copyright (C) 2007 Michal Miszewski <m.miszewski@gmail.com>
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License version 2 as
+#  published by the Free Software Foundation.
+#
+
+use NetAddr::IP;
+use strict;
+
+my ($hostname, $netmask, $shutdown, $descr, $c);
+my $ipaddr = "";
+my $block = 0;
+my @cidr;
+
+while (<>) {
+	$hostname = $1 if /^hostname\s+(\S+)/;
+	if ($block) {
+		if (!(/^ /)) {
+			$block = 0;
+			if ($#cidr >= 0) {
+				foreach $c (@cidr) {
+					print "#" if $shutdown;
+					print "host $hostname ip $c";
+					print " # $descr" if ($descr ne "");
+					print "\n";
+				}
+			}
+		} else {
+			$cidr[$#cidr + 1] = NetAddr::IP->new($ipaddr."/".$netmask)->cidr()
+			if (($ipaddr, $netmask) = (/^ ip address\s+(\S+)\s+(\S+)/));
+			$descr = $1 if /^ description\s+(.+)$/;
+			$shutdown = 1 if /^ shutdown/;
+		}
+	}
+	if (/^interface\s+/) {
+		$block = 1;
+		$shutdown = 0;
+		$descr = "";
+		$ipaddr = "";
+		$netmask = "";
+		@cidr = ();
+	}
+	$hostname = '' if /^end$/;
+}

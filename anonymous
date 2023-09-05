@@ -1,0 +1,9 @@
+sudo /usr/sbin/pppd updetach noauth silent nodeflate pty "/usr/bin/ssh -p 22022 root@ns2.kosmas.gr /usr/sbin/pppd nodetach notty noauth" ipparam vpn 10.90.90.1:10.90.90.2
+http_proxy=http://10.90.90.2:3128/
+https_proxy=http://10.90.90.2:3128/
+ftp_proxy=http://10.90.90.2:3128/
+export http_proxy https_proxy ftp_proxy
+export http_proxy=http://10.90.90.2:3128/
+export https_proxy=http://10.90.90.2:3128/
+export ftp_proxy=http://10.90.90.2:3128/
+chromium

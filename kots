@@ -1,0 +1,35 @@
+#!/bin/bash
+which dialog > /dev/null 2>/dev/null || { echo No dialog application installed. Exiting...; exit; }
+[ -f ~/.kube/kottest ] && [ -f ~/.kube/kotstage ] && [ -f ~/.kube/kotprod ] && [ -f ~/.kube/kotproddr ] && [ -f ~/.kube/kottestcy ] || { echo Kotsovolos prod stage or test config files are missing. Exiting...; exit 1; }
+cur=`ls -al ~/.kube/*|grep config|awk '{print $11}'|awk -F'/' '{print $5}'|sed s/kot//`
+HEIGHT=15
+WIDTH=40
+CHOICE_HEIGHT=6
+BACKTITLE="Kubernetes Environment Changer"
+TITLE="Current Env=$cur"
+MENU="Choose new Environment"
+OPTIONS=(1 "Prod"
+         2 "Stage"
+         3 "Test"
+         4 "Testcy"
+         5 "Proddr"
+         6 "Clear Environment")
+CHOICE=$(dialog --clear \
+                --backtitle "$BACKTITLE" \
+                --title "$TITLE" \
+                --menu "$MENU" \
+                $HEIGHT $WIDTH $CHOICE_HEIGHT \
+                "${OPTIONS[@]}" \
+                2>&1 >/dev/tty)
+clear
+case $CHOICE in
+	1) echo Setting environment to prod; rm -f ~/.kube/config; ln -s ~/.kube/kotprod ~/.kube/config;;
+	5) echo Setting environment to proddr; rm -f ~/.kube/config; ln -s ~/.kube/kotproddr ~/.kube/config;;
+	2) echo Setting environment to stage; rm -f ~/.kube/config; ln -s ~/.kube/kotstage ~/.kube/config;;
+	4) echo Setting environment to testcy; rm -f ~/.kube/config; ln -s ~/.kube/kottestcy ~/.kube/config;;
+	3) echo Setting environmetn to test; rm -f ~/.kube/config; ln -s ~/.kube/kottest ~/.kube/config;;
+	6) echo Removing config file from .kube; rm -f ~/.kube/config;;
+esac
+
+cur=`ls -al ~/.kube/|grep config |awk '{print $11}'|awk -F'/' '{print $5}'|sed s/kot//`
+[ "$cur" == "" ] && echo Environment cleaned in .kube || echo New environment is set to: $cur

@@ -1,0 +1,8 @@
+update-pciids
+update-smart-drivedb
+update-xscreensaver-hacks
+sa-update -D
+freshclam
+bdscan --update
+/opt/sophos-av/bin/savupdate
+fstrim -v -a

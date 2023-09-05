@@ -1,0 +1,10 @@
+#!/bin/bash
+
+HOST=mail.kosmas.gr
+PORT=25
+FROM="kosmas@kosmas.gr"
+TO="idomeneas@osc.gr"
+SUBJECT="Test"
+BODY="Test from telnet..."
+
+( echo "open $HOST $PORT"; sleep 0.7; echo "helo kosmas.gr"; sleep 0.5; echo "mail from: <$FROM>"; sleep 0.5; echo "rcpt to: <$TO>"; sleep 0.5; echo "data"; sleep 0.5; echo "From: $FROM"; echo "To: $TO"; echo "Subject: $SUBJECT"; echo ""; echo "$BODY"; echo ""; echo "."; sleep 0.5; echo "quit"; ) | telnet
