@@ -1,0 +1,65 @@
+#!/bin/bash
+
+[ "$(whoami)" == "root" ] && echo User is root, continuing...  || { echo Not root. Exiting.; exit 1; }
+mountpoint -q /mnt/4TB || mount /mnt/4TB
+mountpoint -q /mnt/4TB && echo /mnt/4TB already mounted
+
+verbose=""
+ask=""
+nosync=0
+
+while getopts 'ivhn' opt; do
+  case "$opt" in
+    i)
+      echo "Running interactively"
+      ask="-a"
+      ;;
+
+    v)
+      echo "Running with verbose"
+      verbose=" -v"
+      ;;
+
+    n)
+      echo "Running with no syncing"
+      nosync=1
+      ;;
+
+    h)
+      echo "Usage: $(basename $0) [-i] [-v] [-n]"
+      exit 0
+      ;;
+
+    ?)
+      echo -e "Invalid command option.\nUsage: $(basename $0) [-i] [-v] [-n]"
+      exit 1
+      ;;
+  esac
+done
+
+shift "$(($OPTIND -1))"
+
+[ $nosync -eq 1 ] && echo No Sync || emerge --sync $verbose
+emerge -D -N -u --with-bdeps=y --keep-going $verbose $ask @world
+emerge $verbose @preserved-rebuild
+revdep-rebuild
+emerge --depclean --exclude gcc --exclude gentoo-sources $verbose $ask
+eclean-dist
+eclean-pkg
+emerge --regen
+emaint --check world
+
+freshclam
+sa-update $verbose
+bdscan --update
+
+# Run fstrim only if a week has passwd from last time
+last=$(cat /usr/local/bin/emergeall.time)
+now=$(date +%s)
+let timed=${now}-${last}
+[ $timed -lt 86400 ] && {
+    echo Less than a week fstrimed
+} || {
+    fstrim -a $verbose
+    date +%s > /usr/local/bin/emergeall.time
+}
